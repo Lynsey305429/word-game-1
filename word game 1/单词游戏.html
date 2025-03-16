@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>单词默写游戏</title>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            background-color: #f9f9f9;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            display: inline-block;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .word-meaning {
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+        .letters {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .letter {
+            padding: 10px;
+            margin: 5px;
+            background-color: #ffcc00;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .spaces {
+            display: flex;
+            justify-content: center;
+        }
+        .space {
+            width: 40px;
+            height: 40px;
+            border-bottom: 2px solid #000;
+            margin: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        .message {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        .score {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="word-meaning" id="word-meaning"></div>
+        <div class="letters" id="letters"></div>
+        <div class="spaces" id="spaces"></div>
+        <div class="message" id="message"></div>
+        <div class="score" id="score"></div>
+    </div>
+
+    <script>
+        const words = [
+            { meaning: "独唱（曲），独奏（曲）", word: "solo", letters: ["s", "o", "l", "o"] },
+            { meaning: "擅长；出色", word: "excel", letters: ["e", "x", "c", "e", "l"] },
+            { meaning: "神经的", word: "neural", letters: ["n", "e", "u", "r", "a", "l"] },
+            { meaning: "（与）空间（有关）的", word: "spatial", letters: ["s", "p", "a", "t", "i", "a", "l"] },
+            { meaning: "设想；形成思维图像", word: "visualize", letters: ["v", "i", "s", "u", "a", "l", "i", "z", "e"] },
+            { meaning: "得分；记分", word: "score", letters: ["s", "c", "o", "r", "e"] },
+            { meaning: "使标准化", word: "standardize", letters: ["s", "t", "a", "n", "d", "a", "r", "d", "i", "z", "e"] },
+            { meaning: "苦恼的", word: "upset", letters: ["u", "p", "s", "e", "t"] },
+            { meaning: "工程学", word: "engineering", letters: ["e", "n", "g", "i", "n", "e", "e", "r", "i", "n", "g"] },
+            { meaning: "工程师", word: "engineer", letters: ["e", "n", "g", "i", "n", "e", "e", "r"] },
+            { meaning: "后悔", word: "regret", letters: ["r", "e", "g", "r", "e", "t"] },
+            { meaning: "批准；赞同", word: "approval", letters: ["a", "p", "p", "r", "o", "v", "a", "l"] },
+            { meaning: "安全的，无危险的", word: "secure", letters: ["s", "e", "c", "u", "r", "e"] },
+            { meaning: "后备方案；备用物品", word: "backup", letters: ["b", "a", "c", "k", "u", "p"] },
+            { meaning: "乏味的；令人厌倦的", word: "boring", letters: ["b", "o", "r", "i", "n", "g"] }
+        ];
+
+        let currentWordIndex = 0;
+        let correctCount = 0; // 正确拼写的单词数
+        let totalWords = words.length; // 总单词数
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function setupGame() {
+            if (currentWordIndex >= words.length) {
+                endGame();
+                return;
+            }
+
+            const currentWord = words[currentWordIndex];
+            document.getElementById('word-meaning').textContent = currentWord.meaning;
+
+            const lettersContainer = document.getElementById('letters');
+            lettersContainer.innerHTML = '';
+            const shuffledLetters = shuffleArray([...currentWord.letters]);
+            shuffledLetters.forEach(letter => {
+                const letterDiv = document.createElement('div');
+                letterDiv.className = 'letter';
+                letterDiv.textContent = letter;
+                letterDiv.draggable = true;
+                letterDiv.addEventListener('dragstart', drag);
+                lettersContainer.appendChild(letterDiv);
+            });
+
+            const spacesContainer = document.getElementById('spaces');
+            spacesContainer.innerHTML = '';
+            for (let i = 0; i < currentWord.word.length; i++) {
+                const spaceDiv = document.createElement('div');
+                spaceDiv.className = 'space';
+                spaceDiv.ondrop = drop;
+                spaceDiv.ondragover = allowDrop;
+                spacesContainer.appendChild(spaceDiv);
+            }
+
+            document.getElementById('message').textContent = '';
+        }
+
+        function allowDrop(event) {
+            event.preventDefault();
+        }
+
+        function drop(event) {
+            event.preventDefault();
+            const data = event.dataTransfer.getData("text");
+            const space = event.target;
+            space.textContent = data; // 允许覆盖已填写的字母
+            checkAnswer();
+        }
+
+        function checkAnswer() {
+            const spaces = document.querySelectorAll('.space');
+            let isComplete = true;
+            let answer = '';
+            spaces.forEach(space => {
+                if (!space.textContent) {
+                    isComplete = false;
+                }
+                answer += space.textContent;
+            });
+
+            // 只有所有空格都被填满后，才判断对错
+            if (isComplete) {
+                if (answer === words[currentWordIndex].word) {
+                    document.getElementById('message').textContent = '正确！太棒了！';
+                    document.getElementById('message').style.color = 'green';
+                    correctCount++;
+                } else {
+                    document.getElementById('message').textContent = '拼写错误！';
+                    document.getElementById('message').style.color = 'red';
+                }
+                currentWordIndex++;
+                setTimeout(() => {
+                    setupGame();
+                }, 1000);
+            }
+        }
+
+        function endGame() {
+            const score = (correctCount / totalWords) * 100;
+            document.getElementById('word-meaning').textContent = '游戏结束！';
+            document.getElementById('letters').innerHTML = '';
+            document.getElementById('spaces').innerHTML = '';
+            document.getElementById('message').textContent = `您完成了所有单词！`;
+            document.getElementById('score').textContent = `得分：${score.toFixed(2)}% （正确：${correctCount}/${totalWords}）`;
+
+            // 显示得分页面 8 秒后跳转
+            setTimeout(() => {
+                submitScoreToWenjuanxing(score);
+            }, 8000); // 8 秒后跳转
+        }
+
+        function submitScoreToWenjuanxing(score) {
+            // 问卷星表单链接
+            const wenjuanxingUrl = "https://www.wjx.top/vm/QxJNBeW.aspx#";
+
+            // 提示玩家输入姓名（可选）
+            const playerName = prompt("请输入您的姓名（可选）：") || "匿名玩家";
+
+            // 跳转到问卷星表单，并填充数据
+            const fullUrl = `${wenjuanxingUrl}?playerName=${encodeURIComponent(playerName)}&score=${encodeURIComponent(score)}`;
+            window.location.href = fullUrl;
+        }
+
+        function drag(event) {
+            event.dataTransfer.setData("text", event.target.textContent);
+        }
+
+        setupGame();
+    </script>
+</body>
+</html>
